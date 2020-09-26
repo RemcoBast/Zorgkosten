@@ -1,0 +1,162 @@
+---
+title: "Project I"
+author: "Remco Bast"
+date: "24-9-2020"
+output: html_document
+---
+
+# Project - Het voorspellen van zorgkosten
+
+De dataset was verkregen van kaggle: https://www.kaggle.com/mirichoi0218/insurance en de data zou ook beschikbaar zijn bij het kopen van het boek Machine Learning With R van Brett Lantz. 
+
+Het doel van de dataset is om zo goed mogelijk de "charges", ofwel de zorgkosten van individuen zo goed mogelijk te voorspelen. Het betreft een dataset met 1338 observaties en 7 variabelen. 
+
+## Inladen van libraries en de data
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/stedy/Machine-Learning-with-R-datasets/master/insurance.csv")
+```
+
+## Data exploratie
+
+Nu de data is ingeladen laten we eens kijken naar wat voor variabelen we hebben en hoe deze eruit zien.
+```{r}
+head(data)
+```
+We hebben dus informatie over de leeftijd, geslacht, aantal kinderen, bmi, rookstatus, de regio, en tot slot de uitkomst genaamd charges.  
+
+Laten we beginnen met het kijken naar descriptive statistics
+```{r}
+summary(data)
+```
+
+Hieruit blijkt al snel dat de personen in deze dataset tussen de 18 en 64 jaar oud zijn, dat er ongeveer even veel vrouwen als mannen in de dataset zitten en dat deze personen goed verdeeld zijn over de verschillende regio's. Qua BMI zien we dat het gemiddelde BMI rond de 30 ligt, wat er dus al op duidt dat de gemiddelde persoon in deze dataset overgewicht heeft. Verder zien we dat de meeste mensen in deze dataset niet roken (+- 93%) en dat het aantal kinderen tussen de 0 en de 5 ligt. De uitkomstmaat charges ligt tussen de 1122 en 63770 en aangezien het een dataset uit Amerika is ga ik er vanuit dat de charges in USD zijn. De gemiddelde zorgkosten zijn in deze dataset 13270 USD. 
+
+We kunnen ook gelijk even kijken naar de correlaties tussen de numerieke variabelen:
+```{r}
+data %>%
+  select_if(is.numeric) %>%
+  cor()
+```
+Hierbij zien we dat er kleine correlaties zijn tussen leeftijd en zorgkosten (0.3) en bmi en zorgkosten (0.2). 
+
+Laten we nu eerst kijken naar de verdeling van de zorgkosten en vervolgens hoe de andere variabelen zich verhouden tot deze zorgkosten.
+
+Visualisatie verdeling zorgkosten:
+```{r}
+ggplot(data = data, mapping = aes(x = charges)) + 
+  geom_histogram(bins = 35, fill = "lightblue") +
+  labs(title = "Verdeling zorgkosten", y = "Aantal", x = "Zorgkosten (in USD)") +
+  theme_light()
+```
+
+De meeste mensen hebben zorgkosten tussen de 1000 en +- 15000 USD. Een kleine groep mensen hebben zorgkosten van 20000-40000 USD en een enkeling heeft meer dan 50000 USD als zorgkosten.
+
+Log10 verdeling zorgkosten.
+```{r}
+ggplot(data = data, mapping = aes(x = charges)) + 
+  geom_histogram(bins = 35, fill = "lightblue") +
+  labs(title = "Verdeling zorgkosten", y = "Aantal", x = "Zorgkosten (in USD)") +
+  scale_x_log10() +
+  theme_light()
+```
+
+```{r}
+ggplot(data = data, mapping = aes(x = age, y = charges)) + 
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_light() +
+  labs(title = "Zorgkosten op basis van leeftijd", x = "Leeftijd", y = "Zorgkosten (in USD)")
+```
+
+Er is een kleine relatie te zien tussen leeftijd en zorgkosten; naarmate de leeftijd toeneemt nemen ook de zorgkosten toe.
+
+
+```{r}
+ggplot(data = data, mapping = aes(x = sex, y = charges, fill = sex)) + 
+  geom_boxplot() + 
+  theme_light() +
+  labs(title = "Zorgkosten op basis van geslacht", y = "Zorgkosten (in USD)", x = "Geslacht")
+```
+
+Er zit niet veel verschil tussen de zorgkosten van mannen en vrouwen in deze dataset.
+
+```{r}
+ggplot(data = data, mapping = aes(x = smoker, y = charges, fill = smoker)) + 
+  geom_boxplot() + 
+  theme_light() +
+  labs(title = "Zorgkosten op basis van roken", y = "Zorgkosten (in USD)", x = "Roken")
+```
+
+Wel zit er een groot verschil tussen de zorgkosten van rokers en niet-rokers. De mediane zorgkosten van rokers liggen ongeveer op de 35000 USD, terwijl die van rokers maar rond de 8000 USD liggen.
+
+
+```{r}
+ggplot(data = data, mapping = aes(x = region, y = charges, fill = region)) + 
+  geom_boxplot() + 
+  theme_light() +
+  labs(title = "Zorgkosten op basis van roken", y = "Zorgkosten (in USD)", x = "Roken")
+```
+
+```{r}
+data %>%
+  group_by(region) %>%
+  summarise(gemiddelde_zorgkosten = mean(charges), mediaan_zorgkosten = median(charges))
+```
+
+Alleen nog kinderen en bmi
+```{r}
+ggplot(data = data, mapping = aes(x = factor(children), y = charges, fill = factor(children))) + 
+  geom_boxplot() + 
+  theme_light() +
+  labs(title = "Zorgkosten op basis van roken", y = "Zorgkosten (in USD)", x = "Roken")
+```
+
+```{r}
+ggplot(data = data, mapping = aes(x = bmi, y = charges)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  theme_light() +
+  labs(title = "Zorgkosten op basis van BMI", y = "Zorgkosten (in USD)", x = "BMI")
+```
+
+```{r}
+data %>%
+  filter(bmi < 20)   #41 mensen
+
+
+data %>%
+  filter(bmi >= 20 & bmi < 25)  #204 mensen
+
+
+data %>% 
+  filter(bmi >= 25 & bmi <= 30)  #388 mensen
+
+data %>% 
+  filter(bmi > 30) #705 mensen
+
+41 + 204 + 388 + 705
+
+
+data %>%
+  mutate(overweight = bmi >= 30)
+
+
+```
+
+
+```{r}
+data %>%
+  mutate(overweight = bmi >= 30) %>%
+
+ggplot(mapping = aes(x = overweight, y = charges)) + 
+  geom_boxplot()
+```
+
+
+
