@@ -15,12 +15,18 @@ Het doel van de dataset is om zo goed mogelijk de "charges", ofwel de zorgkosten
 
 ```{r}
 #suppress om start up message te voorkomen
-suppressPackageStartupMessages({ 
-  library(tidyverse)
-  library(ggplot2)
-  library(corrplot)
-  library(scales)
-})
+#suppressPackageStartupMessages({ 
+  #library(tidyverse)
+  #library(ggplot2)
+  #library(corrplot)
+  #library(scales)
+#})
+
+library(tidyverse)
+library(ggplot2)
+library(corrplot)
+library(scales)
+library(caret)
 ```
 
 ```{r}
@@ -77,17 +83,7 @@ ggplot(data = data, mapping = aes(x = charges)) +
 
 De meeste mensen hebben zorgkosten tussen de 1000 en +- 15000 USD. Een kleine groep mensen hebben zorgkosten van 20000-40000 USD en een enkeling heeft meer dan 50000 USD als zorgkosten.
 
-
-```{r}
-ggplot(data = data, mapping = aes(x = age, y = charges)) + 
-  geom_point() +
-  geom_smooth(method = "lm") +
-  theme_light() +
-  labs(title = "Zorgkosten op basis van leeftijd", x = "Leeftijd", y = "Zorgkosten (in USD)")
-```
-
-Er is een kleine relatie te zien tussen leeftijd en zorgkosten; naarmate de leeftijd toeneemt nemen ook de zorgkosten toe.
-
+Relatie tussen leeftijd en zorgkosten:
 ```{r}
 ggplot(data = data, mapping = aes(x = age, y = charges)) + 
   geom_boxplot(aes(group = age, fill = age)) + 
@@ -95,8 +91,9 @@ ggplot(data = data, mapping = aes(x = age, y = charges)) +
   labs(title = "Zorgkosten op basis van leeftijd", x = "Leeftijd", y = "Zorgkosten (in USD)")
 ```
 
+Er is een kleine relatie te zien tussen leeftijd en zorgkosten; naarmate de leeftijd toeneemt nemen ook de zorgkosten ook toe.
 
-
+Zorgkosten voor mannen en vrouwen:
 ```{r}
 ggplot(data = data, mapping = aes(x = sex, y = charges, fill = sex)) + 
   geom_boxplot() + 
@@ -106,6 +103,7 @@ ggplot(data = data, mapping = aes(x = sex, y = charges, fill = sex)) +
 
 Er zit niet veel verschil tussen de zorgkosten van mannen en vrouwen in deze dataset.
 
+Zorgkosten en roken:
 ```{r}
 ggplot(data = data, mapping = aes(x = smoker, y = charges, fill = smoker)) + 
   geom_boxplot() + 
@@ -113,10 +111,10 @@ ggplot(data = data, mapping = aes(x = smoker, y = charges, fill = smoker)) +
   labs(title = "Zorgkosten op basis van roken", y = "Zorgkosten (in USD)", x = "Roken")
 ```
 
-Wel zit er een groot verschil tussen de zorgkosten van rokers en niet-rokers. De mediane zorgkosten van rokers liggen ongeveer op de 35000 USD, terwijl die van rokers maar rond de 8000 USD liggen.
+Wel zit er een groot verschil tussen de zorgkosten van rokers en niet-rokers. De mediane zorgkosten van rokers liggen ongeveer op de 35000 USD, terwijl die van niet-rokers maar rond de 8000 USD liggen.
 
 
-
+Zorgkosten en regio:
 ```{r}
 ggplot(data = data, mapping = aes(x = region, y = charges, fill = region)) + 
   geom_boxplot() + 
@@ -125,6 +123,7 @@ ggplot(data = data, mapping = aes(x = region, y = charges, fill = region)) +
 ```
 
 Het ziet er naar uit dat de mensen uit de regio Noord-oost meer zorgkosten hebben dan mensen uit andere regio's. We kunnen dit ook numeriek bekijken door per regio te kijken naar de gemiddelde en mediane zorgkosten:
+
 ```{r}
 data %>%
   group_by(region) %>%
@@ -151,51 +150,85 @@ data$children <- factor(data$children)
 Relatie tussen BMI en zorgkosten:
 ```{r}
 ggplot(data = data, mapping = aes(x = bmi, y = charges)) + 
-  geom_point(aes(color = sex)) + 
+  geom_point() + 
   geom_smooth(method = "lm") +
   theme_light() +
   labs(title = "Zorgkosten op basis van BMI", y = "Zorgkosten (in USD)", x = "BMI")
 ```
 
+Naarmate de BMI toeneemt, nemen ook de zorgkosten toe. Wellicht is dit nog anders voor rokers en niet-rokers, dus laten we dit ook visualiseren:
+
+```{r}
+ggplot(data = data, mapping = aes(x = bmi, y = charges, fill = smoker)) + 
+  geom_point(aes(color = smoker)) + 
+  geom_smooth(method = "lm") +
+  theme_light() +
+  labs(title = "Zorgkosten op basis van BMI", y = "Zorgkosten (in USD)", x = "BMI")
+```
+
+We zien hierbij overduidelijk dat de relatie tussen BMI en zorgkosten voornamelijk toeneemt voor rokers.
+
+Voor nu hebben we BMI continue gelaten, maar we kunnen deze BMI variabele ook veranderen naar een binaire variabele om aan te geven of iemand obesitas heeft (BMI > 30) of niet.
+```{r}
+data <- data %>%
+  mutate(obesitas = bmi > 30)
+```
+
+Als we dan kijken naar de eerste paar observaties dan zien we dat we een nieuwe kolom hebben gemaakt genaamd obesitas en dat deze TRUE is als de BMI boven de 30 is en FALSE is als de BMI onder de 30 is.
+```{r}
+head(data)
+```
+
+Deze nieuwe kolom is nu een logical data type, maar als we deze willen meenemen in onze statistische analyses moeten we deze veranderen naar een factor variabele.
+```{r}
+data$obesitas <- factor(data$obesitas)
+```
+
+Laten we kijken of de zorgkosten verschillen tussen mensen met en zonder obesitas.
+```{r}
+ggplot(data = data, mapping = aes(x = obesitas, y = charges, fill = obesitas)) + 
+  geom_boxplot() + 
+  stat_summary(fun=mean, geom="point", shape=20, size=7, color="black") +
+  labs(title = "Zorgkosten geen obesitas / wel obesitas", x = "Obesitas nee / ja", y = "Zorgkosten (in USD)") + 
+  theme_light()
+```
+
+Hierbij zien we dat de mediane zorgkosten niet veel van elkaar verschillen of mensen wel of geen obesitas hebben. Echter, als we dan naar de gemiddelde zorgkosten kijken (aangegeven met de zwarte cirkel) dan zien we dat de mensen die wel obesitas hebben +- 5000 USD meer hebben aan zorgkosten.
+
+Als we exact willen weten hoeveel verschil er zit tussen de gemiddelde zorgkosten van mensen en zonder obesitas dan kunnen we dit ook weer numeriek bekijken:
 ```{r}
 data %>%
-  filter(bmi < 20)   #41 mensen
+  group_by(obesitas) %>%
+  summarise(gemiddelde_zorgkosten = mean(charges))
+```
 
 
-data %>%
-  filter(bmi >= 20 & bmi < 25)  #204 mensen
+## Data opsplitsen in een training-set en test-set
 
+```{r}
+set.seed(101)
 
-data %>% 
-  filter(bmi >= 25 & bmi <= 30)  #388 mensen
+trainIndex <- createDataPartition(data$charges, p = .8, 
+                                  list = FALSE, 
+                                  times = 1)
 
-data %>% 
-  filter(bmi > 30) #705 mensen
-
-41 + 204 + 388 + 705
-
-
-data %>%
-  mutate(overweight = bmi >= 30)
-
-
+train <- data[trainIndex, ]
+test <- data[-trainIndex, ]
 ```
 
 
 ```{r}
-data %>%
-  mutate(overweight = bmi >= 30) %>%
-
-ggplot(mapping = aes(x = overweight, y = charges)) + 
-  geom_boxplot()
+linregressie <- lm(charges ~ .-bmi, data = train)
+summary(linregressie)
 ```
 
 
-```{r}
-data %>%
-  mutate(overweight = bmi >= 30) %>%
-  count(sex)
 
-# count telt gewoon het aantal variabelen in de dataframe, dus stel categoriaal telt die hoevaak iets voorkomt.
-```
 
+Machine learning algoritmes:
+
+- Lineaire regressie
+- SVM regressie
+- Lasso regressie
+- Ridge regressie
+- Random forest regressie 
