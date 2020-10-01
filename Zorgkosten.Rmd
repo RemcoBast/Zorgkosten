@@ -218,17 +218,107 @@ test <- data[-trainIndex, ]
 
 
 ```{r}
-linregressie <- lm(charges ~ .-bmi, data = train)
+linregressie <- lm(charges ~ age + sex + children + region + obesitas + smoker, data = train)
 summary(linregressie)
+```
+
+Geslacht lijkt geen verschil te maken in de lineaire regressie (P = > 0.05). Deze kunnen we dus verwijderen.
+
+```{r}
+linregressie2 <- lm(charges ~ age + children + region + obesitas + smoker, data = train)
+summary(linregressie2)  
+```
+
+Verder zijn de regiocoëfficienten ook niet significant, dus deze kunnen we er ook uit halen.
+
+```{r}
+linregressie3 <- lm(charges ~ age + children + obesitas + smoker, data = train)
+summary(linregressie3)
+```
+
+
+
+```{r}
+head(test)
+```
+
+
+
+```{r}
+trainoptie <- trainControl(method = "repeatedcv", number = 10, repeats = 5) 
+```
+
+```{r}
+set.seed(1)
+linregressie.fit <- train(charges ~ age + children + obesitas + smoker, 
+                          data = train,
+                          method = "lm",
+                          trControl = trainoptie)
+
+linregressie.fit
+```
+
+
+
+```{r}
+set.seed(1)
+randomforest.fit <- train(charges ~ age + sex + children + region + obesitas + smoker,
+                          data = train,
+                          method = "rf", # random forest 
+                          trControl = trainoptie,
+                          tuneGrid = expand.grid(mtry = c(1,2,3,4,5)), #mtry is hoeveel variabelen er geselecteerd worden voor de trees.
+                          importance = TRUE)
+
+randomforest.fit
+varImp(randomforest.fit)
+```
+
+```{r}
+set.seed(1)
+knn.fit <- train(charges ~ age + sex + children + region + obesitas + smoker,
+                 data = train,
+                 preProcess = c("center", "scale"),
+                 method = "knn", #knn 
+                 trControl = trainoptie,
+                 tuneLength = 25)
+
+knn.fit
+
+varImp(knn.fit)
+```
+
+```{r}
+set.seed(1)
+lasso.fit <- train(charges ~ age + sex + children + region + obesitas + smoker, 
+                   data = train, 
+                   method = "glmnet", 
+                   tuneGrid = expand.grid(
+                     .alpha = 1,
+                     .lambda = seq(50, 100, by = 1)),
+                   trControl = trainoptie)
+
+lasso.fit
+varImp(lasso.fit)
 ```
 
 
 
 
+
+```{r}
+resultaat <- resamples(list(knn = knn.fit, lasso = lasso.fit, rf = randomforest.fit, lm = linregressie.fit))
+```
+
+```{r}
+dotplot(resultaat, main = "Training Resultaten (MAE, RMSE, Rsquared)")
+```
+
 Machine learning algoritmes:
 
 - Lineaire regressie
-- SVM regressie
 - Lasso regressie
-- Ridge regressie
 - Random forest regressie 
+- Knn regressie
+
+
+
