@@ -1,7 +1,7 @@
 ---
 title: "Project I"
 author: "Remco Bast"
-date: "24-9-2020"
+date: "3-10-2020"
 output: html_document
 ---
 
@@ -13,20 +13,16 @@ Het doel van de dataset is om zo goed mogelijk de "charges", ofwel de zorgkosten
 
 ## Inladen van libraries en de data
 
-```{r}
+```{r, warning = FALSE}
 #suppress om start up message te voorkomen
-#suppressPackageStartupMessages({ 
-  #library(tidyverse)
-  #library(ggplot2)
-  #library(corrplot)
-  #library(scales)
-#})
+sm <- suppressMessages
 
-library(tidyverse)
-library(ggplot2)
-library(corrplot)
-library(scales)
-library(caret)
+sm(library(tidyverse))
+sm(library(ggplot2))
+sm(library(corrplot))
+sm(library(scales))
+sm(library(caret))
+sm(library(Metrics))
 ```
 
 ```{r}
@@ -216,7 +212,16 @@ train <- data[trainIndex, ]
 test <- data[-trainIndex, ]
 ```
 
+## Algoritmes toepassen
 
+Machine learning algoritmes:
+
+- Lineaire regressie
+- Lasso regressie
+- Random forest regressie 
+- Knn regressie
+
+### Lineaire regressie
 ```{r}
 linregressie <- lm(charges ~ age + sex + children + region + obesitas + smoker, data = train)
 summary(linregressie)
@@ -236,19 +241,13 @@ linregressie3 <- lm(charges ~ age + children + obesitas + smoker, data = train)
 summary(linregressie3)
 ```
 
-
-
-```{r}
-head(test)
-```
-
-
-
+Trainingsoptie instellen als repeated cross validation.
 ```{r}
 trainoptie <- trainControl(method = "repeatedcv", number = 10, repeats = 5) 
 ```
 
-```{r}
+
+```{r, cache = TRUE}
 set.seed(1)
 linregressie.fit <- train(charges ~ age + children + obesitas + smoker, 
                           data = train,
@@ -258,9 +257,8 @@ linregressie.fit <- train(charges ~ age + children + obesitas + smoker,
 linregressie.fit
 ```
 
-
-
-```{r}
+### Random forest
+```{r, cache = TRUE}
 set.seed(1)
 randomforest.fit <- train(charges ~ age + sex + children + region + obesitas + smoker,
                           data = train,
@@ -273,7 +271,8 @@ randomforest.fit
 varImp(randomforest.fit)
 ```
 
-```{r}
+### K-nearest neighbors regressie
+```{r, cache = TRUE}
 set.seed(1)
 knn.fit <- train(charges ~ age + sex + children + region + obesitas + smoker,
                  data = train,
@@ -287,14 +286,15 @@ knn.fit
 varImp(knn.fit)
 ```
 
-```{r}
+### Lasso regressie
+```{r, cache = TRUE}
 set.seed(1)
 lasso.fit <- train(charges ~ age + sex + children + region + obesitas + smoker, 
                    data = train, 
                    method = "glmnet", 
                    tuneGrid = expand.grid(
                      .alpha = 1,
-                     .lambda = seq(50, 100, by = 1)),
+                     .lambda = seq(0, 150, by = 3)),
                    trControl = trainoptie)
 
 lasso.fit
@@ -302,23 +302,25 @@ varImp(lasso.fit)
 ```
 
 
-
-
-
+Resultaten bij elkaar voegen
 ```{r}
-resultaat <- resamples(list(knn = knn.fit, lasso = lasso.fit, rf = randomforest.fit, lm = linregressie.fit))
+resultaat <- resamples(list(KNN_regressie = knn.fit, Lasso_regressie = lasso.fit, Random_forest = randomforest.fit, Lineaire_regressie = linregressie.fit))
 ```
 
 ```{r}
 dotplot(resultaat, main = "Training Resultaten (MAE, RMSE, Rsquared)")
 ```
 
-Machine learning algoritmes:
+Aangezien Random Forest de laagste Mean Absolute error en Root mean squared error heeft gebruiken we deze om predicties te maken op de  test dataset.
 
-- Lineaire regressie
-- Lasso regressie
-- Random forest regressie 
-- Knn regressie
+### Predicties maken
+```{r}
+predicties <- predict(randomforest.fit, newdata = test)
+```
 
 
+```{r}
+rmse(test$charges, predicties)
+```
+De Root mean squared error van onze predicties op de test set is 4200, wat betekend dat de random forest algoritme het best goed doet op data die het niet eerder gezien had. 
 
