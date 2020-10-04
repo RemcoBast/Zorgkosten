@@ -264,7 +264,7 @@ randomforest.fit <- train(charges ~ age + sex + children + region + obesitas + s
                           data = train,
                           method = "rf", # random forest 
                           trControl = trainoptie,
-                          tuneGrid = expand.grid(mtry = c(1,2,3,4,5)), #mtry is hoeveel variabelen er geselecteerd worden voor de trees.
+                          tuneGrid = expand.grid(mtry = c(1,2,3,4,5,6)), #mtry is hoeveel variabelen er geselecteerd worden voor de trees.
                           importance = TRUE)
 
 randomforest.fit
@@ -307,6 +307,14 @@ Resultaten bij elkaar voegen
 resultaat <- resamples(list(KNN_regressie = knn.fit, Lasso_regressie = lasso.fit, Random_forest = randomforest.fit, Lineaire_regressie = linregressie.fit))
 ```
 
+
+```{r}
+resamp <- resamples(list(KNN_regressie = knn.fit, Lasso_regressie = lasso.fit, Random_forest = randomforest.fit, Lineaire_regressie = linregressie.fit))
+
+summary(resamp)
+```
+
+Dotplot visualisatie resultaten:
 ```{r}
 dotplot(resultaat, main = "Training Resultaten (MAE, RMSE, Rsquared)")
 ```
@@ -315,12 +323,28 @@ Aangezien Random Forest de laagste Mean Absolute error en Root mean squared erro
 
 ### Predicties maken
 ```{r}
-predicties <- predict(randomforest.fit, newdata = test)
+predicties <- predict(randomforest.fit, newdata = test, type = "raw")
 ```
 
 
 ```{r}
 rmse(test$charges, predicties)
 ```
-De Root mean squared error van onze predicties op de test set is 4200, wat betekend dat de random forest algoritme het best goed doet op data die het niet eerder gezien had. 
+De Root mean squared error van onze predicties op de test set is 4198, wat betekend dat de random forest algoritme het best goed doet op data die het niet eerder gezien had. 
+
+```{r}
+# predicties opslaan als dataframe
+data_predicties <- as.data.frame(predicties)
+
+# predicties samenvoegen met de test dataset
+test_predicties <- cbind(test, data_predicties)
+```
+
+Visualisatie predicties en actuele zorgkosten:
+```{r}
+ggplot(data = test_predicties, aes(x = predicties, y = charges)) + 
+  geom_point() +
+  geom_abline() +
+  labs(title = "Predicties van random forest vs werkelijke zorgkosten", x = "Voorspeld door Random forest", y = "Werkelijke zorgkosten")
+```
 
